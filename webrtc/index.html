@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Peering</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/simple-peer/9.7.2/simplepeer.min.js" integrity="sha256-uv80p62e3U5+14V+AlrYw7LVAX6dnVHq7HmRzGsHNao="
+        crossorigin="anonymous"></script>
+
+    <style>
+        body {
+            padding: 6px;
+            margin: 6px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #333;
+        }
+
+
+        .peer label {
+            display: block;
+        }
+
+        .peer textarea {
+            display: block;
+            height: 5em;
+            width: 100%;
+            margin-bottom: 3em;
+        }
+
+        .peer button {
+            margin: 1em 0;
+        }
+
+        .peer>div {
+            display: flex;
+        }
+
+        .peer>div>div {
+            padding: 6px;
+            flex: 1 1 0;
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <form onsubmit="addPeer(this, event)">
+
+        <input id="username" type="text" />
+
+        <select id="peer-type">
+            <option value="offer">Offer</option>
+            <option value="answer">Answer</option>
+        </select>
+
+        <button type="submit">Add peer</button>
+
+    </form>
+
+
+
+
+
+    <script>
+        window.peers = window.peers || {};
+
+        const addPeer = (form, event) => {
+
+
+            const username = document.getElementById('username').value;
+            const type = document.getElementById('peer-type').value;
+
+            const isInitiator = type === 'offer'
+
+            peers[username] = new SimplePeer({ initiator: isInitiator, trickle: false, objectMode: true });
+
+
+            peers[username].on('signal', (data) => {
+
+                if (isInitiator) {
+                    document.querySelector(`#peer-${username} .offer`).value = JSON.stringify(data);
+                } else {
+                    document.querySelector(`#peer-${username} .answer`).value = JSON.stringify(data);
+                }
+
+                console.log('signal', data)
+            });
+
+            peers[username].on('connect', () => {
+                document.querySelector(`#peer-${username} .state`).innerText = 'connected'
+            })
+
+            peers[username].on('data', data => {
+                const wrapper = document.createElement('li');
+                wrapper.innerText = data;
+
+                document.querySelector(`#peer-${username} .data`).appendChild(wrapper)
+            })
+
+
+            peers[username].on('error', (err) => {
+
+                document.querySelector(`#peer-${username} .state`).innerText = 'error' + err
+            })
+
+
+
+
+            createPeerUi(username);
+
+            event.preventDefault();
+
+            return false;
+        }
+
+        const createPeerUi = (username) => {
+            const template = `<div class="peer" id="peer-${username}">
+    <h1>${username}</h1>
+    <div>
+        <div>        
+            <label>Offer</label>
+            <textarea class="offer"></textarea>
+            <button type="button" onclick="addOffer('${username}')">Add Offer</button>
+        </div>
+
+        <div>
+            <label>Answer</label>
+            <textarea class="answer"></textarea>
+            <button type="button" onclick="addAnswer('${username}')">Add Answer</button>
+        </div>
+
+    </div>
+    <span>State:</span> <span class="state"></span>
+
+        
+</div>`
+
+            var wrapper = document.createElement('div');
+            wrapper.innerHTML = template;
+
+            document.body.appendChild(wrapper);
+
+        }
+
+
+        const addOffer = (username) => {
+            console.log('adding offer');
+            peers[username].signal(document.querySelector(`#peer-${username} .offer`).value)
+        }
+
+        const addAnswer = (username) => {
+            console.log('adding answer');
+            peers[username].signal(document.querySelector(`#peer-${username} .answer`).value)
+        }
+
+    </script>
+
+
+</body>
+
+</html>
